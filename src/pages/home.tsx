@@ -1,9 +1,53 @@
+'use client'
+import { baseURL } from "@/src/components/constants";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import '../_app/globals.css'
 
 export default function Home() {
+  const [dogBreeds, setDogBreeds] = useState<string[]>([]);
+
+  const dogBreedData = async () => {
+    try {
+      const response = await fetch(baseURL + '/dogs/breeds', {
+        method: "GET",
+        headers: {
+          "Content-Type" : "application/json",
+        },
+        credentials: "include"
+      });
+
+      if (!response.ok) {
+        throw new Error(`Response status: ${response.status} - ${response.statusText}`);
+      }
+      return response.json();
+    }
+    catch (error: any) {
+      console.error(error.message);
+    }
+  }
+
+  useEffect(() => {
+    const fetchDogBreeds = async () => {
+        const breeds = await dogBreedData();
+        setDogBreeds(breeds);
+    };
+    fetchDogBreeds();
+  }, []);
+
+  console.log(dogBreeds)
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+    <div className="richard">
       <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+        {dogBreeds.map((breed: string) => (
+          <button
+            key={breed}
+            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
+          >
+            {breed}
+          </button>
+        ))}
         <Image
           className="dark:invert"
           src="/next.svg"
@@ -93,7 +137,7 @@ export default function Home() {
             width={16}
             height={16}
           />
-          Go to nextjs.org →
+          Global
         </a>
       </footer>
     </div>

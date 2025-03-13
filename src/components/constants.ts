@@ -1,4 +1,4 @@
-interface Dog {
+export interface Dog {
     id: string
     img: string
     name: string
@@ -7,7 +7,7 @@ interface Dog {
     breed: string
 }
 
-interface Location {
+export interface Location {
     zip_code: string
     latitude: number
     longitude: number
@@ -16,9 +16,9 @@ interface Location {
     county: string
 }
 
-interface Coordinates {
+export interface Coordinates {
     lat: number;
     lon: number;
 }
 
-const baseURL = "https://frontend-take-home-service.fetch.com"
+export const baseURL = "https://frontend-take-home-service.fetch.com"
