@@ -17,6 +17,7 @@ export default function Login() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email }),
+      credentials: "include"
     })
  
     if (response.ok) {
@@ -27,7 +28,7 @@ export default function Login() {
   }
  
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
       <input type="name" name="name" placeholder="Name" required />
       <input type="email" name="email" placeholder="Email" required />
       <button type="submit">Login</button>
