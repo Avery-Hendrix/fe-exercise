@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { baseURL, Dog, Match } from "@/src/components/constants";
 import '../_app/globals.css'
+import Header from "../components/header";
+import ResultsPerPageButton from "../components/resultsPerPageButton";
+import PageChangeButton from "../components/pageChangeButton";
+import SearchResultsRender from '../components/searchResultsRender';
 
 export default function Home() {
   const router = useRouter();
@@ -223,7 +227,9 @@ export default function Home() {
     const fetchSearchResults = async () => {
       const dogCityState = async (zipCode: string) => {
         const result = await postLocations([zipCode]);
-        return { city: result[0].city, state: result[0].state };
+        return result && result[0]
+          ? { city: result[0].city || "Unknown", state: result[0].state || "Unknown" }
+          : { city: "Unknown", state: "Unknown" };
       };
 
       const queryParams: Record<string, any> = {
@@ -234,6 +240,7 @@ export default function Home() {
 
       if (selectedBreed) {
         queryParams.breeds = [selectedBreed];
+        sortField === 'breed' && setSortField('name');
       }
 
       if (zipCode) {
@@ -244,7 +251,7 @@ export default function Home() {
       if (results) {
         const updatedResults = await Promise.all(
           results.map(async (dog: Dog) => {
-            const location = await dogCityState(dog.zip_code);
+            const location = dog.zip_code ? await dogCityState(dog.zip_code) : { city: "Unknown", state: "Unknown" };
             return { ...dog, ...location };
           })
         );
@@ -254,14 +261,6 @@ export default function Home() {
 
     fetchSearchResults();
   }, [selectedBreed, page, sortOrder, sortField, zipCode, resultsPerPage]);
-
-  const toggleFavorite = (dogId: string) => {
-    setFavorites((prevFavorites) =>
-      prevFavorites.includes(dogId)
-        ? prevFavorites.filter((id) => id !== dogId)
-        : [...prevFavorites, dogId]
-    );
-  };
 
   const generateMatch = async () => {
     try {
@@ -284,22 +283,9 @@ export default function Home() {
     }
   };
 
-  const sortedBreeds = [...dogBreeds].sort((a, b) => {
-    if (sortOrder === 'asc') {
-      return a.localeCompare(b);
-    } else {
-      return b.localeCompare(a);
-    }
-  });
-
   const zipCodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setZipCode(zipCode);
-  }
-
-  const breedPictureNameClick = (breed: string) => {
-    setSelectedBreed(breed)
-    setPage(0)
   }
 
   const breedDropdownChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -323,15 +309,7 @@ export default function Home() {
 
   return (
     <div>
-      <header className="header py-6 px-4 mb-2 flex justify-between items-center bg-blue-500">
-        <ul><a className="text-3xl font-bold text-white">Dog Finder</a></ul>
-        <ul><a className="text-3xl font-bold text-white" onClick={navigateToFavorites}>Favorites</a></ul>
-        <ul>
-          <a onClick={logoutButton} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-            Logout
-          </a>
-        </ul>
-      </header>
+      <Header logoutButton={logoutButton} navigateToFavorites={navigateToFavorites} />
       <main className="flex flex-col gap-8 items-center pb-4 px-4">
         <div className="flex gap-4 items-center">
           <select
@@ -340,7 +318,7 @@ export default function Home() {
             className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Breeds</option>
-            {sortedBreeds.map((breed, index) => (
+            {dogBreeds.map((breed, index) => (
               <option key={index} value={breed}>{breed}</option>
             ))}
           </select>
@@ -350,6 +328,7 @@ export default function Home() {
             value={sortField}
             className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
+            <option value="" disabled>Select Sort Field</option>
             {!selectedBreed && <option value="breed">Breed</option>}
             <option value="name">Name</option>
             <option value="age">Age</option>
@@ -389,68 +368,17 @@ export default function Home() {
         {searchResults && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {searchResults.map((dog) => (
-              <div key={dog.id} className="border p-4 rounded shadow-lg hover:shadow-xl transition">
-                <Image unoptimized priority={true} className="w-full h-auto rounded" src={dog.img} alt={dog.name} width={200} height={200} />
-                <h3 className="text-xl font-bold mt-2">{dog.name}</h3>
-                <button 
-                  className="text-blue-500 hover:underline hover:font-bold"
-                  onClick={() => breedPictureNameClick(dog.breed)}
-                >
-                  Breed: {dog.breed}
-                </button>
-                <p className="text-gray-700">Age: {dog.age}</p>
-                <p className="text-gray-700">Location: {dog.city}, {dog.state}</p>
-                <p className="text-gray-700">Zip Code: {dog.zip_code}</p>
-                <button
-                  onClick={() => toggleFavorite(dog.id)}
-                  className={`mt-2 ml-14 px-4 py-2 rounded transition ${
-                    favorites.includes(dog.id) ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-green-500 text-white hover:bg-green-600'
-                  }`}
-                >
-                  {favorites.includes(dog.id) ? 'Remove from Favorites' : 'Add to Favorites'}
-                </button>
-              </div>
+              SearchResultsRender({ dog, setSelectedBreed, setPage, setFavorites, favorites })
             ))}
           </div>
         )}
         <button className="font-medium">Favorites: {favorites.length}</button>
-        <button className="font-medium hover:underline" onClick={() => navigateToFavorites()}>View Favorites</button>
         <span className="py-4 font-medium">Page: {page + 1}</span>
         <div className="flex gap-4 mt-4 items-center">
-          <button
-            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-            disabled={page === 0}
-            className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50 hover:bg-gray-600 transition"
-          >
-            Previous Page
-          </button>
+          {PageChangeButton({ page, onClick: () => setPage((prev) => Math.max(prev - 1, 0)), text: 'Previous Page' })}
           <span className="py-4 font-medium">Results per page:</span>
-          <div className="flex gap-2">
-            <button
-              className={`px-1 ${resultsPerPage === 10 ? 'font-bold underline text-blue-500' : 'font-bold hover:underline hover:text-blue-500'}`}
-              onClick={() => setResultsPerPage(10)}
-            >
-              10
-            </button>
-            <button
-              className={`px-1 ${resultsPerPage === 25 ? 'font-bold underline text-blue-500' : 'font-bold hover:underline hover:text-blue-500'}`}
-              onClick={() => setResultsPerPage(25)}
-            >
-              25
-            </button>
-            <button
-              className={`px-1 ${resultsPerPage === 50 ? 'font-bold underline text-blue-500' : 'font-bold hover:underline hover:text-blue-500'}`}
-              onClick={() => setResultsPerPage(50)}
-            >
-              50
-            </button>
-          </div>
-          <button
-            onClick={() => setPage((prev) => prev + 1)}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
-          >
-            Next Page
-          </button>
+          {ResultsPerPageButton({ resultsPerPage, setResultsPerPage })}
+          {PageChangeButton({ page, onClick: () => setPage((prev) => prev + 1), text: 'Next Page' })}
           <button
             onClick={generateMatch}
             className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition"

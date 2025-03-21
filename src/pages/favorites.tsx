@@ -5,6 +5,7 @@ import { baseURL } from '../components/constants';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import '../_app/globals.css';
+import Header from '../components/header';
 
 export default function Favorites() {
     const [arrayOfFavorites, setArrayOfFavorites] = useState<string[]>([]);
@@ -79,29 +80,13 @@ export default function Favorites() {
                 : [...prevFavorites, id]
         );
     };
+    const navigateToHome = (): void => {
+        router.push('/home');
+    };
 
     return (
         <div>
-            <header className="header py-6 px-4 mb-2 flex justify-between items-center bg-blue-500">
-                <ul>
-                    <a className="text-3xl font-bold text-white" href="/home">
-                        Dog Finder
-                    </a>
-                </ul>
-                <ul>
-                    <a className="text-3xl font-bold text-white" href="/favorites">
-                        Favorites
-                    </a>
-                </ul>
-                <ul>
-                    <a
-                        onClick={logoutButton}
-                        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition cursor-pointer"
-                    >
-                        Logout
-                    </a>
-                </ul>
-            </header>
+            <Header logoutButton={logoutButton} navigateToHome={navigateToHome} />
             <main className="py-6 px-4">
                 <h1 className="text-3xl font-bold mb-4">Favorites</h1>
                 <div>
