@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import Favorites from "./favorites";
+import Favorites from "../pages/favorites";
 import { useRouter } from "next/navigation";
 
 jest.mock("next/navigation", () => ({

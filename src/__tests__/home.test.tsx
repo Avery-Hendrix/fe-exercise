@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import Home from "./home";
+import Home from "../pages/home";
 import { useRouter } from "next/navigation";
 
 jest.mock("next/navigation", () => ({

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import SearchResultsRender from "./searchResultsRender";
+import SearchResultsRender from "../components/searchResultsRender";
 import { Dog } from "../constants/constants";
 
 describe("SearchResultsRender Component", () => {

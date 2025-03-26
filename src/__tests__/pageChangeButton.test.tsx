@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import PageChangeButton from "./pageChangeButton";
+import PageChangeButton from "../components/pageChangeButton";
 
 describe("PageChangeButton", () => {
   it("renders the button with the correct text", () => {
