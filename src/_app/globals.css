@@ -19,7 +19,7 @@ body {
 }
 
 header {
-  background-color: #300D38;
+  background-color: #300d38;
 }
 
 a {
@@ -31,6 +31,6 @@ button {
 }
 
 .logout-button {
-  background-color: #FBA919;
+  background-color: #fba919;
   cursor: pointer;
 }
