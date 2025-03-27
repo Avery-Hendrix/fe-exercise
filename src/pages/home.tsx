@@ -2,25 +2,21 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { baseURL, Dog, Match } from "@/src/constants/constants";
+import { baseURL, Dog } from "@/src/constants/constants";
 import Header from "../components/header";
 import ResultsPerPageButton from "../components/resultsPerPageButton";
 import PageChangeButton from "../components/pageChangeButton";
 import SearchResultsRender from "../components/searchResultsRender";
 import "../_app/globals.css";
+import { Match } from '../constants/constants';
 
 export default function Home() {
   const router = useRouter();
   const [dogBreeds, setDogBreeds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<Dog[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedFavorites = localStorage.getItem("favorites");
-      setFavorites(storedFavorites ? JSON.parse(storedFavorites) : []);
-    }
-  }, []);
-
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMatch, setModalMatch] = useState<Dog[] | null>(null);
   const [page, setPage] = useState(0);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [sortField, setSortField] = useState<"breed" | "name" | "age">("breed");
@@ -29,127 +25,58 @@ export default function Home() {
   const [resultsPerPage, setResultsPerPage] = useState<number>(10);
   const [zipCodeTyped, setZipCodeTyped] = useState<string>("");
 
-  const dogBreedData = async () => {
-    try {
-      const response = await fetch(baseURL + "/dogs/breeds", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Response status: ${response.status} - ${response.statusText}`,
-        );
-      }
-      return response.json();
-    } catch (error: any) {
-      console.error(error.message);
-    }
-  };
+  useEffect(() => {
+    const storedFavorites = localStorage.getItem("favorites");
+    setFavorites(storedFavorites ? JSON.parse(storedFavorites) : []);
+  }, []);
 
   useEffect(() => {
     const fetchDogBreeds = async () => {
-      const breeds = await dogBreedData();
-      setDogBreeds(breeds);
+      try {
+        const response = await fetch(`${baseURL}/dogs/breeds`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+        if (response.ok) {
+          setDogBreeds(await response.json());
+        } else {
+          console.error("Failed to fetch dog breeds");
+        }
+      } catch (error) {
+        console.error(error);
+      }
     };
     fetchDogBreeds();
   }, []);
 
-  const logoutButton = () => {
-    fetch(baseURL + "/auth/logout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    }).then((response) => {
-      if (response.ok) {
-        router.push("/");
-      } else {
-        // Handle errors
-      }
-    });
-  };
-
-  const searchDogs = async (queryParams: Record<string, any>) => {
-    const queryString = new URLSearchParams(queryParams).toString();
-    try {
-      const response = await fetch(`${baseURL}/dogs/search?${queryString}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Response status: ${response.status} - ${response.statusText}`,
-        );
-      }
-      const data = await response.json();
-      const dogIds = data.resultIds;
-      if (!Array.isArray(dogIds) || dogIds.length === 0) {
-        console.error("No dog IDs returned from the search query.");
-        return [];
-      }
-
-      const dogsResponse = await fetch(baseURL + "/dogs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(dogIds),
-      });
-
-      if (!dogsResponse.ok) {
-        throw new Error(
-          `Response status: ${dogsResponse.status} - ${dogsResponse.statusText}`,
-        );
-      }
-
-      const dogs = await dogsResponse.json();
-      if (!Array.isArray(dogs)) {
-        console.error("Invalid response format from /dogs endpoint.");
-        return [];
-      }
-
-      return dogs;
-    } catch (error: any) {
-      console.error(error.message);
-    }
-  };
-
-  const postLocations = async (zipCodes: string[]) => {
-    if (zipCodes.length > 100) {
-      throw new Error(
-        "The array of ZIP codes should contain no more than 100 items.",
-      );
-    }
-    try {
-      const response = await fetch(baseURL + "/locations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(zipCodes),
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Response status: ${response.status} - ${response.statusText}`,
-        );
-      }
-      return response.json();
-    } catch (error: any) {
-      console.error(error.message);
-    }
-  };
-
   useEffect(() => {
+    const postLocations = async (zipCodes: string[]) => {
+      if (zipCodes.length > 100) {
+        throw new Error(
+          "The array of ZIP codes should contain no more than 100 items.",
+        );
+      }
+      try {
+        const response = await fetch(baseURL + "/locations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(zipCodes),
+        });
+  
+        if (!response.ok) {
+          throw new Error(
+            `Response status: ${response.status} - ${response.statusText}`,
+          );
+        }
+        return response.json();
+      } catch (error: any) {
+        console.error(error.message);
+      }
+    };
     const fetchSearchResults = async () => {
       const dogCityState = async (zipCode: string) => {
         const result = await postLocations([zipCode]);
@@ -160,96 +87,118 @@ export default function Home() {
             }
           : { city: "Unknown", state: "Unknown" };
       };
-
       const queryParams: Record<string, any> = {
         size: resultsPerPage,
         from: page * resultsPerPage,
         sort: `${sortField}:${sortOrder}`,
+        ...(selectedBreed && { breeds: [selectedBreed] }),
+        ...(zipCode && { zipCodes: [zipCode] }),
       };
 
-      if (selectedBreed) {
-        queryParams.breeds = [selectedBreed];
-        sortField === "breed" && setSortField("name");
-      }
-
-      if (zipCode) {
-        queryParams.zipCodes = [zipCode];
-      }
-
-      const results = await searchDogs(queryParams);
-      if (results) {
-        const updatedResults = await Promise.all(
-          results.map(async (dog: Dog) => {
-            const location = dog.zip_code
-              ? await dogCityState(dog.zip_code)
-              : { city: "Unknown", state: "Unknown" };
-            return { ...dog, ...location };
-          }),
+      try {
+        const response = await fetch(
+          `${baseURL}/dogs/search?${new URLSearchParams(queryParams).toString()}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          },
         );
-        setSearchResults(updatedResults);
+
+        if (response.ok) {
+          const { resultIds } = await response.json();
+          if (resultIds?.length) {
+            const dogsResponse = await fetch(`${baseURL}/dogs`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(resultIds),
+            });
+
+            if (dogsResponse.ok) {
+              const dogs = await dogsResponse.json();
+              for (const dog of dogs) {
+                const { city, state } = await dogCityState(dog.zip_code);
+                dog.city = city;
+                dog.state = state;
+              }
+              setSearchResults(dogs);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(error);
       }
     };
 
     fetchSearchResults();
   }, [selectedBreed, page, sortOrder, sortField, zipCode, resultsPerPage]);
 
+  useEffect(() => {
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  const logoutButton = async () => {
+    try {
+      const response = await fetch(`${baseURL}/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (response.ok) router.push("/");
+    } catch (error) {
+      console.error("Logout failed");
+    }
+  };
+
   const generateMatch = async () => {
     try {
-      const response = await fetch(baseURL + "/dogs/match", {
+      const response = await fetch(`${baseURL}/dogs/match`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(favorites),
       });
 
-      if (!response.ok) {
-        throw new Error(
-          `Response status: ${response.status} - ${response.statusText}`,
-        );
+      if (response.ok) {
+        const dogMatch: Match = await response.json();
+        const dogsResponse = await fetch(`${baseURL}/dogs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify([dogMatch.match]),
+        });
+
+        if (dogsResponse.ok) {
+          setModalMatch(await dogsResponse.json());
+          setModalOpen(true);
+        }
       }
-      const match: Match = await response.json();
-      alert(`Match: ${match.match}`);
-    } catch (error: any) {
-      console.error(error.message);
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const zipCodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setZipCode(zipCode);
-  };
-
-  const breedDropdownChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedBreed(e.target.value);
-    setPage(0);
-  };
-
-  const resetOnClick = () => {
+  const resetFilters = () => {
     setZipCode("");
     setZipCodeTyped("");
-  };
-
-  useEffect(() => {
-    // Save favorites to local storage whenever they change
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
-
-  const navigateToFavorites = (): void => {
-    router.push("/favorites");
+    setSelectedBreed(null);
+    setPage(0);
   };
 
   return (
     <div>
       <Header
         logoutButton={logoutButton}
-        navigateToFavorites={navigateToFavorites}
+        navigateToFavorites={() => router.push("/favorites")}
       />
       <main className="flex flex-col gap-8 items-center pb-4 px-4">
         <div className="flex flex-wrap gap-4 items-center justify-center">
           <select
-            onChange={breedDropdownChange}
+            onChange={(e) => {
+              setSelectedBreed(e.target.value);
+              setPage(0);
+            }}
             value={selectedBreed || ""}
             className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -268,63 +217,56 @@ export default function Home() {
             value={sortField}
             className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="" disabled>
-              Select Sort Field
-            </option>
-            {!selectedBreed && <option value="breed">Breed</option>}
+            <option value="breed">Breed</option>
             <option value="name">Name</option>
             <option value="age">Age</option>
           </select>
           <button
             onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition w-full sm:w-auto"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
           >
             Sort {sortOrder === "asc" ? "Descending" : "Ascending"}
           </button>
         </div>
-        <div className="flex flex-wrap gap-4 items-center justify-center">
-          <form
-            onSubmit={zipCodeSubmit}
-            className="flex flex-wrap gap-4 items-center justify-center"
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setZipCode(zipCodeTyped);
+          }}
+          className="flex flex-wrap gap-4 items-center justify-center"
+        >
+          <input
+            type="text"
+            placeholder="ZIP Code"
+            value={zipCodeTyped}
+            onChange={(e) => setZipCodeTyped(e.target.value)}
+            className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
           >
-            <input
-              type="text"
-              placeholder="ZIP Code"
-              value={zipCodeTyped}
-              onChange={(e) => setZipCodeTyped(e.target.value)}
-              className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
-            />
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition w-full sm:w-auto"
-              onClick={() => setZipCode(zipCodeTyped)}
-            >
-              Go
-            </button>
-            <button
-              type="button"
-              onClick={resetOnClick}
-              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition w-full sm:w-auto"
-            >
-              Reset
-            </button>
-          </form>
+            Go
+          </button>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
+          >
+            Reset
+          </button>
+        </form>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+          {searchResults.map((dog) =>
+            SearchResultsRender({
+              dog,
+              setSelectedBreed,
+              setPage,
+              setFavorites,
+              favorites,
+            }),
+          )}
         </div>
-        {searchResults && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
-            {searchResults.map((dog) =>
-              SearchResultsRender({
-                dog,
-                setSelectedBreed,
-                setPage,
-                setFavorites,
-                favorites,
-              }),
-            )}
-          </div>
-        )}
-        <button className="font-medium">Favorites: {favorites.length}</button>
-        <span className="py-4 font-medium">Page: {page + 1}</span>
         <div className="flex flex-wrap gap-4 mt-4 items-center justify-center">
           {PageChangeButton({
             page,
@@ -340,12 +282,45 @@ export default function Home() {
           })}
           <button
             onClick={generateMatch}
-            className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition w-full sm:w-auto"
+            className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition"
           >
             Generate Match
           </button>
         </div>
       </main>
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-3xl w-full">
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              Match Result
+            </h2>
+            <div className="flex flex-wrap gap-6 justify-center">
+              {modalMatch?.map((dog) => (
+                <div key={dog.id} className="flex flex-col items-center">
+                  <img
+                    src={dog.img}
+                    alt={dog.name}
+                    className="rounded-full w-32 h-32"
+                  />
+                  <h3 className="text-xl font-bold">{dog.name}</h3>
+                  <p className="text-gray-700">Breed: {dog.breed}</p>
+                  <p className="text-gray-700">Age: {dog.age}</p>
+                  <p className="text-gray-700">
+                    Location: {dog.city}, {dog.state}
+                  </p>
+                  <p className="text-gray-700">Zip Code: {dog.zip_code}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setModalOpen(false)}
+              className="mt-6 bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600 transition block mx-auto"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
