@@ -8,7 +8,7 @@ import ResultsPerPageButton from "../components/resultsPerPageButton";
 import PageChangeButton from "../components/pageChangeButton";
 import SearchResultsRender from "../components/searchResultsRender";
 import "../_app/globals.css";
-import { Match } from '../constants/constants';
+import { Match } from "../constants/constants";
 
 export default function Home() {
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function Home() {
           credentials: "include",
           body: JSON.stringify(zipCodes),
         });
-  
+
         if (!response.ok) {
           throw new Error(
             `Response status: ${response.status} - ${response.statusText}`,

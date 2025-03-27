@@ -89,20 +89,18 @@ describe("Home Page", () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: jest
-          .fn()
-          .mockResolvedValue([
-            {
-              id: "dog1",
-              name: "Dog1",
-              img: "",
-              breed: "Breed1",
-              age: 2,
-              city: "City1",
-              state: "State1",
-              zip_code: "12345",
-            },
-          ]),
+        json: jest.fn().mockResolvedValue([
+          {
+            id: "dog1",
+            name: "Dog1",
+            img: "",
+            breed: "Breed1",
+            age: 2,
+            city: "City1",
+            state: "State1",
+            zip_code: "12345",
+          },
+        ]),
       });
 
     render(<Home />);
