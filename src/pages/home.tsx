@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { baseURL, Dog } from "@/src/constants/constants";
+import { baseURL, Coordinates, Dog } from "@/src/constants/constants";
 import Header from "../components/header";
 import ResultsPerPageButton from "../components/resultsPerPageButton";
 import PageChangeButton from "../components/pageChangeButton";
@@ -24,6 +24,10 @@ export default function Home() {
   const [zipCode, setZipCode] = useState<string>("");
   const [resultsPerPage, setResultsPerPage] = useState<number>(10);
   const [zipCodeTyped, setZipCodeTyped] = useState<string>("");
+  const [location, setLocation] = useState<{ city: string; state: string }>({
+    city: "",
+    state: "",
+  });
 
   useEffect(() => {
     const storedFavorites = localStorage.getItem("favorites");
@@ -182,8 +186,154 @@ export default function Home() {
   const resetFilters = () => {
     setZipCode("");
     setZipCodeTyped("");
+    setLocation({ city: "", state: "" });
     setSelectedBreed(null);
     setPage(0);
+  };
+
+  const resetZipCode = () => {
+    setZipCode("");
+    setZipCodeTyped("");
+    setLocation({ city: "", state: "" });
+  };
+
+  const searchLocations = async (queryParams: {
+    city?: string;
+    states?: string[];
+    geoBoundingBox?: {
+      top?: number;
+      left?: number;
+      bottom?: number;
+      right?: number;
+      bottom_left?: Coordinates;
+      top_left?: Coordinates;
+    };
+    size?: number;
+    from?: number;
+  }) => {
+    try {
+      const response = await fetch(baseURL + "/locations/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(queryParams),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Response status: ${response.status} - ${response.statusText}`,
+        );
+      }
+      return response.json();
+    } catch (error: any) {
+      console.error(error.message);
+    }
+  };
+
+  const getSearchLocations = async () => {
+    const results = await searchLocations({
+      city: location.city || undefined,
+      states: location.state ? [location.state] : undefined,
+      size: 10,
+      from: 0,
+    });
+    setZipCodeTyped(
+      location.city && location.state.length === 2
+        ? results.results[0]?.zip_code
+        : "",
+    );
+    setZipCode(
+      location.city && location.state.length === 2
+        ? results.results[0]?.zip_code
+        : "",
+    );
+  };
+
+  const findMyLocation = async () => {
+    if (!navigator.geolocation) {
+      console.error("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const geoBoundingBox = {
+          top: latitude + 0.1,
+          bottom: latitude - 0.1,
+          left: longitude - 0.1,
+          right: longitude + 0.1,
+        };
+
+        const locationResults = await searchLocations({
+          geoBoundingBox,
+          size: 10,
+          from: 0,
+        });
+
+        console.log(
+          locationResults.results[0],
+          "search locations results using geolocation",
+        );
+
+        if (locationResults.results) {
+          const { city, state } = locationResults.results[0];
+          await setLocation({ city, state });
+          await setZipCode(locationResults.results[0].zip_code);
+          setZipCodeTyped(locationResults.results[0].zip_code);
+          console.log(`Location found: ${city}, ${state}`);
+        } else {
+          console.log("No locations found.");
+        }
+      },
+      (error) => {
+        console.error("Error fetching geolocation:", error.message);
+      },
+    );
+  };
+
+  const handleFindMyLocation = async () => {
+    await findMyLocation();
+  };
+
+  const zipCodeOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const regex = /^[0-9]{0,5}$/;
+    if (regex.test(value)) {
+      setZipCodeTyped(value);
+    } else if (value === "") {
+      setZipCodeTyped("");
+    } else {
+      alert("Invalid ZIP code format");
+    }
+  };
+
+  const zipCodeOnSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (zipCodeTyped.length === 5) {
+      const response = await fetch(`${baseURL}/dogs/search?zipCodes=${zipCodeTyped}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const { resultIds } = await response.json();
+        if (resultIds?.length) {
+          setZipCode(zipCodeTyped);
+        } else {
+          alert("No dogs found for the entered ZIP code.");
+        }
+      } else {
+        alert("Failed to validate ZIP code. Please try again.");
+      }
+    } else if (zipCodeTyped.length === 0) {
+      setZipCode("");
+    } else if (zipCodeTyped !== "") {
+      alert("Invalid ZIP code. Please enter a 5-digit ZIP code.");
+    }
   };
 
   return (
@@ -227,24 +377,28 @@ export default function Home() {
           >
             Sort {sortOrder === "asc" ? "Descending" : "Ascending"}
           </button>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
+          >
+            Reset Filters
+          </button>
         </div>
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setZipCode(zipCodeTyped);
-          }}
-          className="flex flex-wrap gap-4 items-center justify-center"
+          onSubmit={zipCodeOnSubmit}
+          className="flex gap-4 items-center"
         >
           <input
             type="text"
             placeholder="ZIP Code"
             value={zipCodeTyped}
-            onChange={(e) => setZipCodeTyped(e.target.value)}
-            className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={zipCodeOnChange}
+            className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
             Go
           </button>
@@ -253,7 +407,45 @@ export default function Home() {
             onClick={resetFilters}
             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
           >
-            Reset
+            Reset Location
+          </button>
+        </form>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setLocation({ city: location.city, state: location.state });
+            getSearchLocations();
+          }}
+          className="flex gap-4 items-center"
+        >
+          <input
+            type="text"
+            placeholder="City"
+            value={location.city}
+            onChange={(e) => setLocation({ ...location, city: e.target.value })}
+            className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="text"
+            placeholder="State"
+            value={location.state}
+            onChange={(e) =>
+              setLocation({ ...location, state: e.target.value })
+            }
+            className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Go
+          </button>
+          <button
+            type="button"
+            onClick={handleFindMyLocation}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Find My Location
           </button>
         </form>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
