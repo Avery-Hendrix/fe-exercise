@@ -1,5 +1,7 @@
 ## This component was created as an example project for Fetch
 
+## Domain for application: https://fe-exercise-three.vercel.app/
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
