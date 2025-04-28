@@ -1,10 +1,10 @@
-export default function ResultsPerPageButton({
+export const ResultsPerPageButton = ({
   resultsPerPage,
   setResultsPerPage,
 }: {
   resultsPerPage: number;
   setResultsPerPage: (resultsPerPage: number) => void;
-}) {
+}) => {
   return (
     <div className="flex gap-2">
       <button
@@ -27,4 +27,4 @@ export default function ResultsPerPageButton({
       </button>
     </div>
   );
-}
+};

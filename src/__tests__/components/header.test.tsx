@@ -1,8 +1,9 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import Header from "../components/header";
 
-describe("Header Component", () => {
+import { Header } from "@/src/components";
+
+describe("Header", () => {
   it("renders the header with all elements", () => {
     render(
       <Header

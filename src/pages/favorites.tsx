@@ -1,9 +1,11 @@
 "use client";
-import { useRouter } from "next/navigation";
-import { baseURL } from "../constants/constants";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Header from "../components/header";
+import { useRouter } from "next/navigation";
+
+import { Header } from "@/src/components";
+import { baseURL } from "@/src/constants";
+
 import "../_app/globals.css";
 
 export default function Favorites() {

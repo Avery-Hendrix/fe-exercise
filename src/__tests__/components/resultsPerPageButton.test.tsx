@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import ResultsPerPageButton from "../components/resultsPerPageButton";
+
+import { ResultsPerPageButton } from "@/src/components";
 
 describe("ResultsPerPageButton", () => {
   const mockSetResultsPerPage = jest.fn();

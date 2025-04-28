@@ -1,7 +1,8 @@
 "use client";
-import { baseURL } from "@/src/constants/constants";
 import { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+
+import { baseURL } from "@/src/constants";
 
 export default function Login() {
   const router = useRouter();
