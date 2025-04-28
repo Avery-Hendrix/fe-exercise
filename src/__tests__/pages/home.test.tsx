@@ -1,7 +1,8 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import Home from "../pages/home";
-import { baseURL } from "../constants/constants";
+
+import { baseURL } from "@/src/constants";
+import Home from "@/src/pages/home";
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(() => ({
@@ -9,13 +10,17 @@ jest.mock("next/navigation", () => ({
   })),
 }));
 
-describe("Home Page", () => {
+describe("Home", () => {
   beforeEach(() => {
     localStorage.clear();
     jest.clearAllMocks();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue([]),
+    });
   });
 
-  it("renders the Home component", () => {
+  it("renders the Home page", () => {
     render(<Home />);
     expect(screen.getByText("Dog Fetcher")).toBeInTheDocument();
     expect(screen.getByText("All Breeds")).toBeInTheDocument();
@@ -41,7 +46,7 @@ describe("Home Page", () => {
     render(<Home />);
 
     const zipInput = screen.getByPlaceholderText("ZIP Code");
-    const resetButton = screen.getByText("Reset");
+    const resetButton = screen.getByText("Reset Location");
 
     fireEvent.change(zipInput, { target: { value: "12345" } });
     expect(zipInput).toHaveValue("12345");
@@ -53,7 +58,7 @@ describe("Home Page", () => {
   it("handles ZIP code submission", async () => {
     render(<Home />);
     const zipInput = screen.getByPlaceholderText("ZIP Code");
-    const goButton = screen.getByText("Go");
+    const goButton = screen.getByTestId("submit-zip-code");
 
     fireEvent.change(zipInput, { target: { value: "12345" } });
     fireEvent.click(goButton);
@@ -132,7 +137,7 @@ describe("Home Page", () => {
   });
 
   it("fetches search results", async () => {
-    (fetch as jest.Mock)
+    (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(["1"]),
@@ -163,11 +168,75 @@ describe("Home Page", () => {
 
     fireEvent.click(logoutButton);
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        `${baseURL}/auth/logout`,
-        expect.any(Object),
-      );
+    expect(fetch).toHaveBeenCalledWith(
+      `${baseURL}/auth/logout`,
+      expect.any(Object),
+    );
+  });
+
+  it("fetches dog breeds on mount", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue(["Labrador", "Poodle"]),
     });
+
+    render(<Home />);
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(`${baseURL}/dogs/breeds`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      expect(screen.getByText("Labrador")).toBeInTheDocument();
+      expect(screen.getByText("Poodle")).toBeInTheDocument();
+    });
+  });
+
+  it("fetches search results based on filters", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue(["1"]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          resultIds: ["1", "2"],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue([
+          { id: "1", name: "Buddy", breed: "Labrador", zip_code: "12345" },
+          { id: "2", name: "Max", breed: "Poodle", zip_code: "67890" },
+        ]),
+      });
+
+    render(<Home />);
+    await waitFor(() => {
+      expect(screen.getByText("Buddy")).toBeInTheDocument();
+      expect(screen.getByText("Max")).toBeInTheDocument();
+    });
+  });
+
+  it("resets filters correctly", () => {
+    render(<Home />);
+    const resetButton = screen.getByText("Reset Filters");
+    const zipInput = screen.getByPlaceholderText("ZIP Code");
+    fireEvent.change(zipInput, { target: { value: "12345" } });
+    expect(zipInput).toHaveValue("12345");
+
+    fireEvent.click(resetButton);
+
+    expect(zipInput).toHaveValue("");
+  });
+
+  it("handles invalid ZIP code input", async () => {
+    render(<Home />);
+    const zipInput = screen.getByPlaceholderText("ZIP Code");
+
+    fireEvent.change(zipInput, { target: { value: "a" } });
+    expect(zipInput).toHaveValue("");
   });
 });

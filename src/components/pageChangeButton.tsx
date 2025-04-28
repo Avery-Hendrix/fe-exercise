@@ -1,4 +1,4 @@
-export default function PageChangeButton({
+export const PageChangeButton = ({
   page,
   onClick,
   text,
@@ -6,7 +6,7 @@ export default function PageChangeButton({
   onClick: () => void;
   page: number;
   text: string;
-}) {
+}) => {
   return (
     <button
       onClick={onClick}
@@ -16,4 +16,4 @@ export default function PageChangeButton({
       {text}
     </button>
   );
-}
+};

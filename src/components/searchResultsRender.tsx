@@ -1,7 +1,8 @@
 import Image from "next/image";
-import { Dog } from "../constants/constants";
 
-export default function SearchResultsRender({
+import { Dog } from "@/src/constants";
+
+export const SearchResultsRender = ({
   dog,
   setSelectedBreed,
   setPage,
@@ -15,7 +16,7 @@ export default function SearchResultsRender({
     favorites: string[] | ((prevFavorites: string[]) => string[]),
   ) => void;
   favorites: string[];
-}) {
+}) => {
   const breedPictureNameClick = (breed: string) => {
     setSelectedBreed(breed);
     setPage(0);
@@ -72,4 +73,4 @@ export default function SearchResultsRender({
       </div>
     </div>
   );
-}
+};

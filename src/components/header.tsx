@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-export default function Header({
+export const Header = ({
   navigateToHome,
   navigateToFavorites,
   logoutButton,
@@ -8,7 +8,7 @@ export default function Header({
   navigateToHome?: () => void;
   navigateToFavorites?: () => void;
   logoutButton: () => void;
-}) {
+}) => {
   return (
     <header className="header py-4 px-4 mb-2 flex flex-wrap items-center bg-purple-900">
       <div className="flex-shrink-0 flex items-center">
@@ -44,4 +44,4 @@ export default function Header({
       </div>
     </header>
   );
-}
+};

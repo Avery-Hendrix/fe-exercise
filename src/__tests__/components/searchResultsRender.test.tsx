@@ -1,8 +1,9 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import SearchResultsRender from "../components/searchResultsRender";
-import { Dog } from "../constants/constants";
 
-describe("SearchResultsRender Component", () => {
+import { SearchResultsRender } from "@/src/components";
+import { Dog } from "@/src/constants";
+
+describe("SearchResultsRender", () => {
   const mockDog: Dog = {
     id: "1",
     name: "Buddy",

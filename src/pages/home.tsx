@@ -2,13 +2,19 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { baseURL, Dog } from "@/src/constants/constants";
-import Header from "../components/header";
-import ResultsPerPageButton from "../components/resultsPerPageButton";
-import PageChangeButton from "../components/pageChangeButton";
-import SearchResultsRender from "../components/searchResultsRender";
+import {
+  BreedFilters,
+  CityStateForm,
+  Header,
+  MatchModal,
+  PageChangeButton,
+  ResultsPerPageButton,
+  SearchResultsRender,
+  ZipCodeForm,
+} from "@/src/components";
+import { baseURL, Coordinates, Dog, Match } from "@/src/constants/constants";
+
 import "../_app/globals.css";
-import { Match } from "../constants/constants";
 
 export default function Home() {
   const router = useRouter();
@@ -24,6 +30,10 @@ export default function Home() {
   const [zipCode, setZipCode] = useState<string>("");
   const [resultsPerPage, setResultsPerPage] = useState<number>(10);
   const [zipCodeTyped, setZipCodeTyped] = useState<string>("");
+  const [location, setLocation] = useState<{ city: string; state: string }>({
+    city: "",
+    state: "",
+  });
 
   useEffect(() => {
     const storedFavorites = localStorage.getItem("favorites");
@@ -182,8 +192,151 @@ export default function Home() {
   const resetFilters = () => {
     setZipCode("");
     setZipCodeTyped("");
+    setLocation({ city: "", state: "" });
     setSelectedBreed(null);
     setPage(0);
+  };
+
+  const searchLocations = async (queryParams: {
+    city?: string;
+    states?: string[];
+    geoBoundingBox?: {
+      top?: number;
+      left?: number;
+      bottom?: number;
+      right?: number;
+      bottom_left?: Coordinates;
+      top_left?: Coordinates;
+    };
+    size?: number;
+    from?: number;
+  }) => {
+    try {
+      const response = await fetch(baseURL + "/locations/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(queryParams),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Response status: ${response.status} - ${response.statusText}`,
+        );
+      }
+      return response.json();
+    } catch (error: any) {
+      console.error(error.message);
+    }
+  };
+
+  const getSearchLocations = async () => {
+    const results = await searchLocations({
+      city: location.city || undefined,
+      states: location.state ? [location.state] : undefined,
+      size: 10,
+      from: 0,
+    });
+    setZipCodeTyped(
+      location.city && location.state.length === 2
+        ? results.results[0]?.zip_code
+        : "",
+    );
+    setZipCode(
+      location.city && location.state.length === 2
+        ? results.results[0]?.zip_code
+        : "",
+    );
+  };
+
+  const findMyLocation = async () => {
+    if (!navigator.geolocation) {
+      console.error("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const geoBoundingBox = {
+          top: latitude + 0.1,
+          bottom: latitude - 0.1,
+          left: longitude - 0.1,
+          right: longitude + 0.1,
+        };
+
+        const locationResults = await searchLocations({
+          geoBoundingBox,
+          size: 10,
+          from: 0,
+        });
+
+        console.log(
+          locationResults.results[0],
+          "search locations results using geolocation",
+        );
+
+        if (locationResults.results) {
+          const { city, state } = locationResults.results[0];
+          await setLocation({ city, state });
+          await setZipCode(locationResults.results[0].zip_code);
+          setZipCodeTyped(locationResults.results[0].zip_code);
+          console.log(`Location found: ${city}, ${state}`);
+        } else {
+          console.log("No locations found.");
+        }
+      },
+      (error) => {
+        console.error("Error fetching geolocation:", error.message);
+      },
+    );
+  };
+
+  const handleFindMyLocation = async () => {
+    await findMyLocation();
+  };
+
+  const zipCodeOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const regex = /^[0-9]{0,5}$/;
+    if (regex.test(value)) {
+      setZipCodeTyped(value);
+    } else if (value === "") {
+      setZipCodeTyped("");
+    } else {
+      alert("Invalid ZIP code format");
+    }
+  };
+
+  const zipCodeOnSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (zipCodeTyped.length === 5) {
+      const response = await fetch(
+        `${baseURL}/dogs/search?zipCodes=${zipCodeTyped}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        },
+      );
+
+      if (response.ok) {
+        const { resultIds } = await response.json();
+        if (resultIds?.length) {
+          setZipCode(zipCodeTyped);
+        } else {
+          alert("No dogs found for the entered ZIP code.");
+        }
+      } else {
+        alert("Failed to validate ZIP code. Please try again.");
+      }
+    } else if (zipCodeTyped.length === 0) {
+      setZipCode("");
+    } else if (zipCodeTyped !== "") {
+      alert("Invalid ZIP code. Please enter a 5-digit ZIP code.");
+    }
   };
 
   return (
@@ -193,69 +346,29 @@ export default function Home() {
         navigateToFavorites={() => router.push("/favorites")}
       />
       <main className="flex flex-col gap-8 items-center pb-4 px-4">
-        <div className="flex flex-wrap gap-4 items-center justify-center">
-          <select
-            onChange={(e) => {
-              setSelectedBreed(e.target.value);
-              setPage(0);
-            }}
-            value={selectedBreed || ""}
-            className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All Breeds</option>
-            {dogBreeds.map((breed, index) => (
-              <option key={index} value={breed}>
-                {breed}
-              </option>
-            ))}
-          </select>
-          <span className="py-2 font-medium">Filter:</span>
-          <select
-            onChange={(e) =>
-              setSortField(e.target.value as "breed" | "name" | "age")
-            }
-            value={sortField}
-            className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="breed">Breed</option>
-            <option value="name">Name</option>
-            <option value="age">Age</option>
-          </select>
-          <button
-            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-          >
-            Sort {sortOrder === "asc" ? "Descending" : "Ascending"}
-          </button>
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setZipCode(zipCodeTyped);
-          }}
-          className="flex flex-wrap gap-4 items-center justify-center"
-        >
-          <input
-            type="text"
-            placeholder="ZIP Code"
-            value={zipCodeTyped}
-            onChange={(e) => setZipCodeTyped(e.target.value)}
-            className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-          >
-            Go
-          </button>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition"
-          >
-            Reset
-          </button>
-        </form>
+        {BreedFilters({
+          setSelectedBreed,
+          setSortField,
+          setSortOrder,
+          resetFilters,
+          dogBreeds,
+          selectedBreed,
+          setPage,
+          sortField,
+          sortOrder,
+        })}
+        {ZipCodeForm({
+          zipCodeTyped,
+          zipCodeOnChange,
+          zipCodeOnSubmit,
+          resetFilters,
+        })}
+        {CityStateForm({
+          location,
+          setLocation,
+          getSearchLocations,
+          handleFindMyLocation,
+        })}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
           {searchResults.map((dog) =>
             SearchResultsRender({
@@ -288,39 +401,7 @@ export default function Home() {
           </button>
         </div>
       </main>
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-3xl w-full">
-            <h2 className="text-2xl font-bold mb-6 text-center">
-              Match Result
-            </h2>
-            <div className="flex flex-wrap gap-6 justify-center">
-              {modalMatch?.map((dog) => (
-                <div key={dog.id} className="flex flex-col items-center">
-                  <img
-                    src={dog.img}
-                    alt={dog.name}
-                    className="rounded-full w-32 h-32"
-                  />
-                  <h3 className="text-xl font-bold">{dog.name}</h3>
-                  <p className="text-gray-700">Breed: {dog.breed}</p>
-                  <p className="text-gray-700">Age: {dog.age}</p>
-                  <p className="text-gray-700">
-                    Location: {dog.city}, {dog.state}
-                  </p>
-                  <p className="text-gray-700">Zip Code: {dog.zip_code}</p>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setModalOpen(false)}
-              className="mt-6 bg-blue-500 text-white px-6 py-3 rounded hover:bg-blue-600 transition block mx-auto"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {modalOpen && MatchModal({ modalMatch, setModalOpen })}
     </div>
   );
 }
