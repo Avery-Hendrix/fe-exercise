@@ -13,6 +13,10 @@ describe("Home Page", () => {
   beforeEach(() => {
     localStorage.clear();
     jest.clearAllMocks();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue([]),
+    });
   });
 
   it("renders the Home component", () => {
@@ -41,7 +45,7 @@ describe("Home Page", () => {
     render(<Home />);
 
     const zipInput = screen.getByPlaceholderText("ZIP Code");
-    const resetButton = screen.getByText("Reset");
+    const resetButton = screen.getByText("Reset Location");
 
     fireEvent.change(zipInput, { target: { value: "12345" } });
     expect(zipInput).toHaveValue("12345");
@@ -53,7 +57,7 @@ describe("Home Page", () => {
   it("handles ZIP code submission", async () => {
     render(<Home />);
     const zipInput = screen.getByPlaceholderText("ZIP Code");
-    const goButton = screen.getByText("Go");
+    const goButton = screen.getByTestId("submit-zip-code");
 
     fireEvent.change(zipInput, { target: { value: "12345" } });
     fireEvent.click(goButton);
@@ -132,7 +136,7 @@ describe("Home Page", () => {
   });
 
   it("fetches search results", async () => {
-    (fetch as jest.Mock)
+    (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
         json: jest.fn().mockResolvedValue(["1"]),
@@ -163,11 +167,9 @@ describe("Home Page", () => {
 
     fireEvent.click(logoutButton);
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        `${baseURL}/auth/logout`,
-        expect.any(Object),
-      );
-    });
+    expect(fetch).toHaveBeenCalledWith(
+      `${baseURL}/auth/logout`,
+      expect.any(Object),
+    );
   });
 });

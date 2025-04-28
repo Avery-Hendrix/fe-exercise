@@ -191,12 +191,6 @@ export default function Home() {
     setPage(0);
   };
 
-  const resetZipCode = () => {
-    setZipCode("");
-    setZipCodeTyped("");
-    setLocation({ city: "", state: "" });
-  };
-
   const searchLocations = async (queryParams: {
     city?: string;
     states?: string[];
@@ -313,11 +307,14 @@ export default function Home() {
   const zipCodeOnSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (zipCodeTyped.length === 5) {
-      const response = await fetch(`${baseURL}/dogs/search?zipCodes=${zipCodeTyped}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${baseURL}/dogs/search?zipCodes=${zipCodeTyped}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        },
+      );
 
       if (response.ok) {
         const { resultIds } = await response.json();
@@ -385,10 +382,7 @@ export default function Home() {
             Reset Filters
           </button>
         </div>
-        <form
-          onSubmit={zipCodeOnSubmit}
-          className="flex gap-4 items-center"
-        >
+        <form onSubmit={zipCodeOnSubmit} className="flex gap-4 items-center">
           <input
             type="text"
             placeholder="ZIP Code"
@@ -399,8 +393,9 @@ export default function Home() {
           <button
             type="submit"
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            data-testid="submit-zip-code"
           >
-            Go
+            Submit
           </button>
           <button
             type="button"
@@ -422,7 +417,12 @@ export default function Home() {
             type="text"
             placeholder="City"
             value={location.city}
-            onChange={(e) => setLocation({ ...location, city: e.target.value })}
+            onChange={(e) =>
+              setLocation({
+                ...location,
+                city: e.target.value.toUpperCase(),
+              })
+            }
             className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
           />
           <input
@@ -430,15 +430,19 @@ export default function Home() {
             placeholder="State"
             value={location.state}
             onChange={(e) =>
-              setLocation({ ...location, state: e.target.value })
+              setLocation({
+                ...location,
+                state: e.target.value.toUpperCase(),
+              })
             }
             className="border p-2 rounded focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            data-testid="submit-location"
           >
-            Go
+            Submit
           </button>
           <button
             type="button"
